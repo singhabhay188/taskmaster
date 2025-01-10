@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -23,27 +24,37 @@ import {
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
-import { useMutation } from "@apollo/client";
-import { taskSchema } from "@/lib/validation";
+import { taskCreateSchema } from "@/lib/validation";
 import { TaskCreate } from "@/types";
-import { CREATE_TASK, GET_TASKS } from '@/graphql/queries';
+import { CREATE_TASK } from '@/graphql/queries';
+import client from "@/lib/graphqlClient";
+import toast from "react-hot-toast";
 
-export function TaskCreateForm() {
+const createTaskMutation = async (variables: TaskCreate) => {
+  const data = await client.request(CREATE_TASK, variables);
+  return data;
+};
+
+export function TaskCreateForm({closeDrawer}:{closeDrawer:()=> void}) {
   const router = useRouter();
-  const [createTask, { loading }] = useMutation(CREATE_TASK, {
-    refetchQueries: [
-      {
-        query: GET_TASKS
-      }
-    ],
-    onCompleted: () => {
-      router.refresh();
+  const queryClient = useQueryClient();
+  
+  const { mutate: createTask, isPending } = useMutation({
+    mutationFn: createTaskMutation,
+    onSuccess: () => {
+      toast.success('Task created successfully!');
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      closeDrawer();
       router.push("/dashboard");
+    },
+    onError: (error) => {
+      console.error("Error creating task:", error);
+      toast.error('Failed to create task');
     }
   });
 
-  const form = useForm<z.infer<typeof taskSchema>>({
-    resolver: zodResolver(taskSchema),
+  const form = useForm<z.infer<typeof taskCreateSchema>>({
+    resolver: zodResolver(taskCreateSchema),
     defaultValues: {
       title: "",
       description: "",
@@ -51,30 +62,22 @@ export function TaskCreateForm() {
     },
   });
 
-  const onSubmit = async (data: z.infer<typeof taskSchema>) => {
-    console.log("Form data:", data);
-    try {
-      const variables: TaskCreate = {
-        title: data.title,
-        description: data.description
-      };
+  const onSubmit = async (data: z.infer<typeof taskCreateSchema>) => {
+    const variables: TaskCreate = {
+      title: data.title,
+      description: data.description
+    };
 
-      if(data.dueDate) {
-        variables.dueDate = data.dueDate.toISOString();
-      }
-
-      console.log('variables:', variables);
-
-      await createTask({
-        variables
-      });
-      router.push("/dashboard");
-    } catch (err) {
-      console.error("Error creating task:", err);
+    if(data.dueDate) {
+      variables.dueDate = data.dueDate.toISOString();
     }
+
+    createTask(variables);
   };
 
   return (
+    <div className="p-4 pb-0">
+
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <FormField
@@ -148,10 +151,11 @@ export function TaskCreateForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={loading}>
-          {loading ? "Creating..." : "Create Task"}
+        <Button type="submit" disabled={isPending} className="w-full">
+          {isPending ? "Creating..." : "Create Task"}
         </Button>
       </form>
     </Form>
+    </div>
   );
 }

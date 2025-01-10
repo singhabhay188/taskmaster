@@ -3,9 +3,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { GET_TASKS, UPDATE_TASK } from '@/graphql/queries';
+import { UPDATE_TASK } from '@/graphql/queries';
 import {
   Form,
   FormControl,
@@ -32,27 +33,33 @@ import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { Task } from "@/types";
 import { useRouter } from "next/navigation";
-import { useMutation } from "@apollo/client";
+import client from "@/lib/graphqlClient";
+import { taskEditSchema } from "@/lib/validation";
+import toast from "react-hot-toast";
 
-const taskSchema = z.object({
-  title: z.string().min(1, "Title is short"),
-  description: z.string().min(10, "Write a longer description"),
-  status: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED"]),
-  dueDate: z.date().optional(),
-});
+const editTaskMutation = async (variables: Task) => {
+  const data = await client.request(UPDATE_TASK, variables);
+  return data;
+};
 
 export function TaskEditForm({ initialData }: { initialData: Task }) {
   const router = useRouter();
-  const [updateTask, { loading, error }] = useMutation(UPDATE_TASK, {
-    refetchQueries: [{ query: GET_TASKS }],
-    onCompleted: () => {
+
+  const { mutate: editTask, isPending } = useMutation({
+    mutationFn: editTaskMutation,
+    onSuccess: () => {
+      toast.success('Task Edited successfully!');
       router.refresh();
       router.push("/dashboard");
+    },
+    onError: (error) => {
+      console.error("Error creating task:", error);
+      toast.error('Failed to create task');
     }
   });
 
-  const form = useForm<z.infer<typeof taskSchema>>({
-    resolver: zodResolver(taskSchema),
+  const form = useForm<z.infer<typeof taskEditSchema>>({
+    resolver: zodResolver(taskEditSchema),
     defaultValues: {
       title: initialData.title,
       description: initialData.description,
@@ -61,30 +68,21 @@ export function TaskEditForm({ initialData }: { initialData: Task }) {
     },
   });
 
-  const onSubmit = async (data: z.infer<typeof taskSchema>) => {
+  const onSubmit = async (data: z.infer<typeof taskEditSchema>) => {
     console.log("Form data:", data);
-
-    try {
-      const variables : Task = {
-        id: initialData.id,
-        title: data.title,
-        description: data.description,
-        status: data.status
-      };
-
-      if(data.dueDate) {
-        variables.dueDate = data.dueDate.toISOString();
-      }
-
-      console.log('variables:', variables);
-
-      await updateTask({
-        variables
-      });
       
-    } catch (err) {
-      console.error("Error updating task:", err);
+    const variables : Task = {
+      id: initialData.id,
+      title: data.title,
+      description: data.description,
+      status: data.status
+    };
+
+    if(data.dueDate) {
+      variables.dueDate = data.dueDate.toISOString();
     }
+
+    editTask(variables);
   };
 
   return (
@@ -188,10 +186,8 @@ export function TaskEditForm({ initialData }: { initialData: Task }) {
           )}
         />
 
-        {error && <p>{error.message}</p>}
-
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Updating..." : "Update Task"}
+        <Button type="submit" className="w-full" disabled={isPending}>
+          {isPending ? "Updating..." : "Update Task"}
         </Button>
       </form>
     </Form>
