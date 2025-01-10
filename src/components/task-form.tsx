@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/popover";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
-import { useRouter } from "next/navigation";
 import { taskCreateSchema } from "@/lib/validation";
 import { TaskCreate } from "@/types";
 import { CREATE_TASK } from '@/graphql/queries';
@@ -36,7 +35,6 @@ const createTaskMutation = async (variables: TaskCreate) => {
 };
 
 export function TaskCreateForm({closeDrawer}:{closeDrawer:()=> void}) {
-  const router = useRouter();
   const queryClient = useQueryClient();
   
   const { mutate: createTask, isPending } = useMutation({
@@ -45,7 +43,6 @@ export function TaskCreateForm({closeDrawer}:{closeDrawer:()=> void}) {
       toast.success('Task created successfully!');
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       closeDrawer();
-      router.push("/dashboard");
     },
     onError: (error) => {
       console.error("Error creating task:", error);

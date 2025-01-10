@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { UPDATE_TASK } from '@/graphql/queries';
@@ -32,7 +32,6 @@ import {
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { Task } from "@/types";
-import { useRouter } from "next/navigation";
 import client from "@/lib/graphqlClient";
 import { taskEditSchema } from "@/lib/validation";
 import toast from "react-hot-toast";
@@ -42,15 +41,15 @@ const editTaskMutation = async (variables: Task) => {
   return data;
 };
 
-export function TaskEditForm({ initialData }: { initialData: Task }) {
-  const router = useRouter();
+export function TaskEditForm({ initialData, closeDailog }: { initialData: Task, closeDailog : () => void }) {
+  const queryClient = useQueryClient();
 
   const { mutate: editTask, isPending } = useMutation({
     mutationFn: editTaskMutation,
     onSuccess: () => {
       toast.success('Task Edited successfully!');
-      router.refresh();
-      router.push("/dashboard");
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      closeDailog();
     },
     onError: (error) => {
       console.error("Error creating task:", error);
