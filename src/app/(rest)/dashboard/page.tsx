@@ -1,29 +1,11 @@
 "use client";
-import { useQuery, useMutation, gql } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client";
 import { TaskCard } from "@/components/task-card";
 import { Task } from "@/types";
 import { useState } from "react";
 import MessageViewer from "@/components/message-viewer";
 import { toast } from "react-hot-toast";
-
-// Define your GraphQL query
-const GET_TASKS = gql`
-  query GET_TASKS {
-    tasks {
-      title
-      description
-      status
-      dueDate
-      id
-    }
-  }
-`;
-
-const DELETE_TASK = gql`
-  mutation Mutation($deleteTaskId: ID!) {
-    deleteTask(id: $deleteTaskId)
-  }
-`;
+import { DELETE_TASK, GET_TASKS } from "@/graphql/queries";
 
 export default function DashboardPage() {
   const { loading, error, data, refetch } = useQuery(GET_TASKS);

@@ -1,20 +1,9 @@
 'use client';
 
-import { useQuery, gql } from "@apollo/client";
+import { useQuery } from "@apollo/client";
 import { TaskEditForm } from "@/components/task-form-edit";
 import MessageViewer from "@/components/message-viewer";
-
-const GET_TASK_BY_ID = gql`
-  query GetTask($id: String!) {
-    taskById(id: $id) {
-     id
-     title
-     description
-     status
-     dueDate
-    }
-  }
-`;
+import { GET_TASK_BY_ID } from "@/graphql/queries";
 
 export function EditTaskContent({ taskId }: { taskId: string }) {
   const { data, loading, error } = useQuery(GET_TASK_BY_ID, {

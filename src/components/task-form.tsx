@@ -23,26 +23,19 @@ import {
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
-import { gql, useMutation } from "@apollo/client";
+import { useMutation } from "@apollo/client";
 import { taskSchema } from "@/lib/validation";
 import { TaskCreate } from "@/types";
-
-const CREATE_TASK = gql`
-  mutation CreateTask($title: String!, $description: String!, $dueDate: String) {
-    createTask(title: $title, description: $description, dueDate: $dueDate) {
-      id
-      title
-      description
-      status
-      dueDate
-    }
-  }
-`;
+import { CREATE_TASK, GET_TASKS } from '@/graphql/queries';
 
 export function TaskCreateForm() {
   const router = useRouter();
   const [createTask, { loading }] = useMutation(CREATE_TASK, {
-    refetchQueries: ['GET_TASKS'],
+    refetchQueries: [
+      {
+        query: GET_TASKS
+      }
+    ],
     onCompleted: () => {
       router.refresh();
       router.push("/dashboard");

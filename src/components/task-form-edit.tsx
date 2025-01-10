@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { GET_TASKS, UPDATE_TASK } from '@/graphql/queries';
 import {
   Form,
   FormControl,
@@ -31,19 +32,7 @@ import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { Task } from "@/types";
 import { useRouter } from "next/navigation";
-import { gql, useMutation } from "@apollo/client";
-
-const UPDATE_TASK = gql`
-  mutation UpdateTask($id: ID!, $title: String!, $description: String!, $status: String!, $dueDate: String) {
-    updateTask(id: $id, title: $title, description: $description, status: $status, dueDate: $dueDate) {
-      id
-      title
-      description
-      status
-      dueDate
-    }
-  }
-`;
+import { useMutation } from "@apollo/client";
 
 const taskSchema = z.object({
   title: z.string().min(1, "Title is short"),
@@ -55,7 +44,7 @@ const taskSchema = z.object({
 export function TaskEditForm({ initialData }: { initialData: Task }) {
   const router = useRouter();
   const [updateTask, { loading, error }] = useMutation(UPDATE_TASK, {
-    refetchQueries: ['GET_TASKS'],
+    refetchQueries: [{ query: GET_TASKS }],
     onCompleted: () => {
       router.refresh();
       router.push("/dashboard");
