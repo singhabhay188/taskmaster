@@ -1,7 +1,7 @@
 'use client';
 
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MessageViewer from "@/components/message-viewer";
 import { DELETE_TASK, GET_TASKS } from "@/graphql/queries";
 import client from "@/lib/graphqlClient";
@@ -25,13 +25,25 @@ const deleteTask = async (id: string) => {
 };
 
 export default function DashboardPage() {
+  const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
-  const { data, error, isLoading, isError, refetch } = useQuery({ 
+  const { data, error, isLoading, isError } = useQuery({ 
     queryKey: ["tasks"], 
     queryFn: fetchTasks 
   });
-  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+
+  const { mutate: delTask, isPending, variables } = useMutation({
+    mutationFn: deleteTask,
+    onSuccess: () => {
+      toast.success('Successfully deleted!');
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+    onError: (error) => {
+      console.error('Error deleting task:', error);
+      toast.error('Failed to delete task');
+    }
+  });
 
   function handleClose() {
     setIsOpen(false);
@@ -41,17 +53,7 @@ export default function DashboardPage() {
   }
 
   const handleDelete = async (taskId: string) => {
-    try {
-      setDeletingTaskId(taskId);
-      await deleteTask(taskId);
-      await refetch();
-      toast.success('Successfully deleted!');
-    } catch (err) {
-      console.error('Error deleting task:', err);
-      toast.error('Failed to delete task');
-    } finally {
-      setDeletingTaskId(null);
-    }
+    delTask(taskId);
   };
 
   if (isLoading) return <MessageViewer message="Loading tasks..." />;
@@ -73,7 +75,7 @@ export default function DashboardPage() {
               task={task}
               onEdit={() => {setEditingTaskId(task.id); handleOpen(); }}
               onDelete={handleDelete}
-              isDeleting={deletingTaskId === task.id}
+              isDeleting={isPending && variables === task.id}
             />
           ))
         )}
